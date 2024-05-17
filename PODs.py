@@ -16,14 +16,15 @@ def generate_html_file_start():
     doctype = "<!DOCTYPE html>"
     htmlStart = "<html>"
     head = "<head><title>Open-Dir webPreview</title></head>"
-    body = "<body>"
+    body = "<body style='background-color:black;color:red;text-align:center'>"
 
     return doctype+head+body
 
 
 def generate_preview_line(linkItem,webURL):
-    linkItemURL = webURL+"/"+linkItem
-    htmlString = "<div><p>"+linkItem+"<iframe src='"+ linkItemURL +"'></iframe><div>"
+    linkItemURL = webURL+linkItem.strip()
+    style = "width:65vw;height:65vh;background-color:white;color:black;display:block;margin:auto;"
+    htmlString = "<div><p>"+linkItem+"</p><iframe style='"+style+"'src='"+ linkItemURL +"'></iframe><div>"
 
     return htmlString
 
