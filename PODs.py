@@ -31,6 +31,8 @@ def generate_preview_line(linkItem,webURL):
 
 def main():
     fileName = "./webPreview.html"
+    lineCountSuccess = 0
+    lineCountFailure = 0
 
     webURL = input("Please paste the url of the open directory:  ")
     returnedContent = requests.get(webURL,verify=False)
@@ -52,15 +54,19 @@ def main():
                 print(e)
             try:
                 file.write(previewLine)
+                lineCountSuccess += 1
             except Exception as e:
                 print("FAILED TO WRITE PREVIEW LINE TO FILE")
                 print(e)
+                lineCountFailure += 1
             
             print("\n")
 
         file.write(generate_html_file_end())
     file.close()
 
+    print("Succeded In Writting:  "+lineCountSuccess+" Lines\nFailed To Write:  "+lineCountFailure+" Lines")
     print("\n\nDONE")
+
 
 main()
