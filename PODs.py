@@ -1,72 +1,103 @@
 # This script will generate an html preview file of a specified open-dir.
 # Use at your own risk.
 # 2xdropout 2024
+import argparse
 import requests
+import re
 from bs4 import BeautifulSoup
 
+class OutputFile:
+    def __init__(self, connectionObject, fileName = "./webPreview.html"):
+        self.fileStart = "<!DOCTYPE html>\n<html><head><title>Open-Dir webPreview</title></head>\n<body style='background-color:black;color:red;text-align:center'>"
+        self.fileEnd = "\n</body></html>"
+        self.fileName = fileName
+        self.links = ""
+        self.Connection = connectionObject
+    
 
-def generate_html_file_end():
-    bodyEnd = "</body>"
-    htmlEnd = "</html>"
+    def CreatePreview(self, linkItem):
+        linkItemURL = str(self.Connection.URL)+linkItem.strip()
+        style = "width:65vw;height:65vh;background-color:white;color:black;display:block;margin:auto;"
+        htmlString = "\n<div><p>"+linkItem+"</p><iframe style='"+style+"'src='"+ linkItemURL +"'></iframe><div>"
 
-    return bodyEnd+htmlEnd
-
-
-def generate_html_file_start():
-    doctype = "<!DOCTYPE html>"
-    htmlStart = "<html>"
-    head = "<head><title>Open-Dir webPreview</title></head>"
-    body = "<body style='background-color:black;color:red;text-align:center'>"
-
-    return doctype+head+body
+        return htmlString
 
 
-def generate_preview_line(linkItem,webURL):
-    linkItemURL = webURL+linkItem.strip()
-    style = "width:65vw;height:65vh;background-color:white;color:black;display:block;margin:auto;"
-    htmlString = "<div><p>"+linkItem+"</p><iframe style='"+style+"'src='"+ linkItemURL +"'></iframe><div>"
+    def WriteFile(self):
+        if(len(self.links) == 0):
+            print(f"NO MATCHING LINKS FOUND AT THE GIVEN SITE:      {self.Connection.URL}")
+            exit()
 
-    return htmlString
+        with open(self.fileName,'w') as file:
+            print("\n")
+            file.write(self.fileStart)
+            for item in self.links:
+                print("\nGenerating line for link:  ", item.text)
+
+                try:
+                    previewLine = self.CreatePreview(item.text)
+                except Exception as e:
+                    print(f"FAILED TO GENERATE PREVIEW LINE:  {item.text}")
+                    print(e)
+                try:
+                    file.write(previewLine)
+                except Exception as e:
+                    print("FAILED TO WRITE PREVIEW LINE TO FILE")
+                    print(e)
+                
+                print("\n")
+
+            file.write(self.fileEnd)
+        file.close()
+    
+class Connection:
+    def __init__(self, host):
+        self.URL = host
+        self.soup = ""
+        self.filter = ""
+    
+
+    def SearchContent(self):
+        if(self.filter != ""):
+            filterRegex = re.compile(str(self.filter))
+            return self.soup.find_all('a', {"href":filterRegex})
+        else:
+            return self.soup.find_all('a')
+
+
+    def GetContent(self):
+        returnedContent = requests.get(self.URL,verify=False)
+        self.soup=BeautifulSoup(returnedContent.text, "html.parser")
+
+        return self.SearchContent()
+    
 
 
 def main():
-    fileName = "./webPreview.html"
-    lineCountSuccess = 0
-    lineCountFailure = 0
+    parser = argparse.ArgumentParser(description='PODs, an open-dir preview tool')
 
-    webURL = input("Please paste the url of the open directory:  ")
-    returnedContent = requests.get(webURL,verify=False)
+    parser.add_argument('-H', '--host', help='Set the open-dir host location')
+    parser.add_argument('-o', '--outputFile', help='Set the output file for the preview HTML page')
+    parser.add_argument('-m', '--matchType', help='Only return matched file types based on the provided extension')
 
-    soup=BeautifulSoup(returnedContent.text, "html.parser")
+    args = parser.parse_args()
 
-    openDirLinks = soup.find_all('a')
-
-    with open(fileName,'w') as file:
-        print("\n")
-        file.write(generate_html_file_start())
-        for item in openDirLinks:
-            print("\nGenerating line for link:  ", item.text)
-
-            try:
-                previewLine = generate_preview_line(item.text,webURL)
-            except Exception as e:
-                print("FAILED TO GENERATE PREVIEW LINE")
-                print(e)
-            try:
-                file.write(previewLine)
-                lineCountSuccess += 1
-            except Exception as e:
-                print("FAILED TO WRITE PREVIEW LINE TO FILE")
-                print(e)
-                lineCountFailure += 1
-            
-            print("\n")
-
-        file.write(generate_html_file_end())
-    file.close()
-
-    print("Succeded In Writting:  "+lineCountSuccess+" Lines\nFailed To Write:  "+lineCountFailure+" Lines")
-    print("\n\nDONE")
+    if(args.host == None):
+        print("Host value required for PODs to run!")
+        exit()
+    else:
+        con = Connection(args.host)
+    if(args.outputFile != None):
+        outFile = OutputFile(con, args.outputFile)
+    else:
+        outFile = OutputFile(con)
+    
+    if(args.matchType != None):
+        con.filter = "\."+str(args.matchType)
+    
+    outFile.links = con.GetContent()
+    print(outFile.links)
+    outFile.WriteFile()
 
 
 main()
